@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.so }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        so: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # Os testes rodam primeiro porque sao eles que prendem os numeros das
+      # tabelas abaixo. Se um numero do README mudar, aqui quebra antes de o
+      # medidor imprimir a versao nova sem ninguem reparar.
+      - name: Testes
+        run: dotnet test testes/Wythoff.Testes/Wythoff.Testes.csproj -c Release --nologo
+
+      - name: As posicoes frias pelos tres caminhos
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- frias
+
+      - name: Wythoff contra o Nim de duas pilhas
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- confronto
+
+      - name: Quantos lances vencedores tem cada posicao
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- lances
+
+      - name: A densidade das posicoes frias
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- densidade
+
+      # A varredura longa: cem milhoes de valores nao bastam para achar o
+      # primeiro erro do ponto flutuante, entao aqui ela vai ate o limite em
+      # que 5n2 ainda cabe em 64 bits.
+      - name: Onde a conta com ponto flutuante erra
+        run: dotnet run --project ferramentas/Medidor/Medidor.csproj -c Release -- double 1300000000
